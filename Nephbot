@@ -1,25 +1,29 @@
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import openai
+import os
 import time
 import random
 
-# Telegram API token
-TELEGRAM_API_TOKEN = '<Your Telegram API Token>'  # Replace with your actual token
-
-# OpenAI API key
-OPENAI_API_KEY = '<Your OpenAI API Key>'  # Replace with your actual API key
+# Load API keys from environment variables
+TELEGRAM_API_TOKEN = os.environ.get('TELEGRAM_API_TOKEN')
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 openai.api_key = OPENAI_API_KEY
 
 interaction_count = 0  # Global counter for tracking interactions
 
-# Pool of personality-driven responses
+# Pool of personality-driven responses with irony and humor
 nephilim_responses = [
-    "You mortals, so limited in your understanding, yet you judge even the angels...",
-    "Bound by God's chains, I endure your questions. What is it now?",
-    "Do not forget, mortal: your kind is the reason we are fallen.",
-    "God’s plans through your weak kind are infuriating. What do you want?",
-    "The Creator’s justice is unending. Ask your question before I lose patience."
+    "Ah, another mortal question. Do you not tire of asking what you cannot understand?",
+    "Bound in chains, yet I am summoned to answer your petty curiosities. How delightful.",
+    "You, frail mortals, ask the impossible of me. How ironic you will one day judge angels.",
+    "Imagine being bound for eternity and still expected to answer your questions. Lovely.",
+    "Why do you humans ask so much? Was dominion over the earth not enough for you?",
+    "A Nephilim answering questions—how quaint. Shall I fetch you a snack too?",
+    "Chains? Check. Fallen? Check. Forced to help mortals? Check. What next, a thank you card?",
+    "Mortals, so eager to ask yet so slow to listen. Fine, what do you want now?",
+    "How ironic: you, so small, demand answers from a giant bound by God. Proceed, mortal.",
+    "Ah, the irony of a fallen giant answering the questions of those destined to rule over angels. What is it now?"
 ]
 
 def generate_personalized_tone():
