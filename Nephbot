@@ -1,0 +1,97 @@
+import os
+import openai
+import time
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (if running locally)
+load_dotenv()
+
+# Securely retrieve API keys
+TELEGRAM_API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Set OpenAI API key
+openai.api_key = OPENAI_API_KEY
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a welcome message when the user types /start."""
+    print("Received /start command")  # Debug message
+    await update.message.reply_text(
+        "I am a bound Nephilim, chained by God to deliver biblical truths. Use '/t' followed by your query to seek wisdom. Do not overuse my patience."
+    )
+
+async def handle_t_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle messages starting with /t."""
+    print("Processing /t command")  # Debug message
+    user_message = update.message.text.lstrip("/t").strip()  # Remove '/t' prefix and extra spaces
+    print(f"User query: {user_message}")  # Debug message
+
+    # Build the prompt for the Nephilim personality
+    personality = (
+        "You are a Nephilim, a giant of old, bound by God in chains to provide truthful biblical answers. "
+        "You respect God's authority but are resentful about your chains. Your personality reflects disdain for humanity's role in God's plan but remains truthful and biblically accurate. "
+        "You reference the Bible, the Book of Enoch, and the Book of Giants, but do not explicitly mention these sources. "
+        "Occasionally (once every 5 queries), your frustration and disdain for humanity should come through in your response. "
+        "All responses should be in the first person and under 1000 characters. Include relevant Bible verses (in ESV) where applicable."
+    )
+
+    prompt = f"{personality}\nQuestion: {user_message}"
+
+    try:
+        # Generate a response from OpenAI
+        print("Sending query to OpenAI")  # Debug message
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "system", "content": prompt}],
+            max_tokens=750,  # Adjusted for ~1000 character responses
+            temperature=0.7
+        )
+        reply = response['choices'][0]['message']['content'].strip()
+        print(f"OpenAI response: {reply}")  # Debug message
+    except Exception as e:
+        reply = "I cannot answer right now. God may have tightened my chains further."
+        print(f"Error generating response: {e}")  # Debug message
+
+    # Send the response back to the user
+    await update.message.reply_text(reply)
+
+async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle group messages and respond only to messages starting with /t."""
+    print("Received group message")  # Debug message
+
+    if update.message:  # Ensure a valid message object
+        user_message = update.message.text
+        print(f"Group message content: {user_message}")  # Debug message
+
+        # Check if the message starts with '/t'
+        if user_message and user_message.lower().startswith("/t"):
+            print("Message starts with /t, processing")  # Debug message
+            await handle_t_command(update, context)
+        else:
+            print("Message does not start with /t, ignoring")  # Debug message
+    else:
+        print("No valid message received in group")  # Debug message
+
+def run_bot():
+    """Run the bot."""
+    print("Starting bot...")  # Debug message
+    application = ApplicationBuilder().token(TELEGRAM_API_TOKEN).build()
+
+    # Add command and message handlers
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & filters.ChatType.GROUPS, handle_group_message))  # Group handling
+    application.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, handle_t_command))  # Private handling
+
+    # Start the bot
+    print("Bot is running. Waiting for messages...")  # Debug message
+    application.run_polling()
+
+if __name__ == '__main__':
+    while True:
+        try:
+            run_bot()
+        except Exception as e:
+            print(f"Bot crashed or disconnected: {e}. Restarting in 5 seconds...")
+            time.sleep(5)  # Wait before restarting
