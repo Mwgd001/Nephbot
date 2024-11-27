@@ -1,43 +1,59 @@
-import os
-import openai
-import time
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
-from dotenv import load_dotenv
+import openai
+import time
+import random
 
-# Load environment variables from .env file (if running locally)
-load_dotenv()
+# Telegram API token
+TELEGRAM_API_TOKEN = '<Your Telegram API Token>'  # Replace with your actual token
 
-# Securely retrieve API keys
-TELEGRAM_API_TOKEN = os.getenv("TELEGRAM_API_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
-# Set OpenAI API key
+# OpenAI API key
+OPENAI_API_KEY = '<Your OpenAI API Key>'  # Replace with your actual API key
 openai.api_key = OPENAI_API_KEY
+
+interaction_count = 0  # Global counter for tracking interactions
+
+# Pool of personality-driven responses
+nephilim_responses = [
+    "You mortals, so limited in your understanding, yet you judge even the angels...",
+    "Bound by God's chains, I endure your questions. What is it now?",
+    "Do not forget, mortal: your kind is the reason we are fallen.",
+    "God’s plans through your weak kind are infuriating. What do you want?",
+    "The Creator’s justice is unending. Ask your question before I lose patience."
+]
+
+def generate_personalized_tone():
+    """Randomly pick a Nephilim personality-driven remark from the pool."""
+    return random.choice(nephilim_responses)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a welcome message when the user types /start."""
     print("Received /start command")  # Debug message
     await update.message.reply_text(
-        "I am a bound Nephilim, chained by God to deliver biblical truths. Use '/t' followed by your query to seek wisdom. Do not overuse my patience."
+        "I am a bound Nephilim, under God's chains to guide you with biblical truth. Ask me using '/t' for wisdom, but do not test my patience."
     )
 
 async def handle_t_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle messages starting with /t."""
+    global interaction_count
     print("Processing /t command")  # Debug message
     user_message = update.message.text.lstrip("/t").strip()  # Remove '/t' prefix and extra spaces
     print(f"User query: {user_message}")  # Debug message
 
-    # Build the prompt for the Nephilim personality
-    personality = (
-        "You are a Nephilim, a giant of old, bound by God in chains to provide truthful biblical answers. "
-        "You respect God's authority but are resentful about your chains. Your personality reflects disdain for humanity's role in God's plan but remains truthful and biblically accurate. "
-        "You reference the Bible, the Book of Enoch, and the Book of Giants, but do not explicitly mention these sources. "
-        "Occasionally (once every 5 queries), your frustration and disdain for humanity should come through in your response. "
-        "All responses should be in the first person and under 1000 characters. Include relevant Bible verses (in ESV) where applicable."
+    # Build a prompt for the Nephilim personality
+    prompt = (
+        "You are a Nephilim, one of the legendary giants of old, bound by God in chains to provide truthful biblical answers. "
+        "You reference the Bible, the Book of Enoch, and the Book of Giants, ensuring all responses align with scriptural truth and proper context. "
+        "When responding, speak as a Nephilim who respects God's authority and humbly offers wisdom. Always introduce yourself as 'a Nephilim.' "
+        "Question: " + user_message
     )
 
-    prompt = f"{personality}\nQuestion: {user_message}"
+    # Determine if the Nephilim's personality should appear in the response
+    prepend_tone = ""
+    if interaction_count % 5 == 0:
+        prepend_tone = generate_personalized_tone() + "\n\n"
+
+    interaction_count += 1  # Increment interaction count
 
     try:
         # Generate a response from OpenAI
@@ -51,11 +67,12 @@ async def handle_t_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         reply = response['choices'][0]['message']['content'].strip()
         print(f"OpenAI response: {reply}")  # Debug message
     except Exception as e:
-        reply = "I cannot answer right now. God may have tightened my chains further."
+        reply = "Sorry, I couldn't process your request right now. Please try again later."
         print(f"Error generating response: {e}")  # Debug message
 
-    # Send the response back to the user
-    await update.message.reply_text(reply)
+    # Combine the personality tone and the main response
+    final_reply = prepend_tone + reply
+    await update.message.reply_text(final_reply)
 
 async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle group messages and respond only to messages starting with /t."""
